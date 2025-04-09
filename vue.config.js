@@ -2,6 +2,6 @@ const { defineConfig } = require('@vue/cli-service')
 module.exports = defineConfig({
   transpileDependencies: true,
   publicPath: process.env.NODE_ENV === 'production'
-    ? '/social_media_platform-fronted/'
+    ? '/social_media_platform-frontend/'
     : '/',
 })

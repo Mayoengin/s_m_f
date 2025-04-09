@@ -1,7 +1,6 @@
 // src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router';
 import store from '@/store';
-
 // Import views directly with relative paths to ensure they're found
 import Home from '../views/Home.vue';
 import Login from '../views/Login.vue';
@@ -12,7 +11,7 @@ import CreatePost from '../views/CreatePost.vue';
 import EditPost from '../views/EditPost.vue';
 import NotFound from '../views/NotFound.vue';
 
-// Define routes
+// Define routes with base path adjusted
 const routes = [
   {
     path: '/',
@@ -57,31 +56,36 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/:pathMatch(.*)*', 
+    path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: NotFound
   }
 ];
 
-// Create router instance
+// Create router instance with specific base for GitHub Pages
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory('/social_media_platform-fronted/'),
   routes
 });
 
 // Navigation guard for authentication
 router.beforeEach((to, from, next) => {
   const isAuthenticated = store.getters['auth/isAuthenticated'];
-  
+ 
   // Handle routes that require authentication
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!isAuthenticated) {
-      next({ name: 'Login', query: { redirect: to.fullPath } });
+      next({ 
+        name: 'Login', 
+        query: { 
+          redirect: to.fullPath.replace('/social_media_platform-fronted', '')
+        } 
+      });
     } else {
       next();
     }
   }
-  
+ 
   // Handle routes for guests only (like login page)
   else if (to.matched.some(record => record.meta.guestOnly)) {
     if (isAuthenticated) {
@@ -90,7 +94,7 @@ router.beforeEach((to, from, next) => {
       next();
     }
   }
-  
+ 
   // For all other routes
   else {
     next();

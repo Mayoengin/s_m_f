@@ -14,10 +14,27 @@
         <!-- Video section -->
         <div class="col-md-8">
           <div class="video-player-container">
-            <video controls autoplay class="video-player" ref="videoPlayer">
-              <source :src="reel.video_url" type="video/mp4">
+            <video 
+              controls 
+              autoplay 
+              class="video-player" 
+              ref="videoPlayer"
+              @error="handleVideoError"
+            >
+              <source :src="reel.video_url" :type="getVideoType(reel.video_url)">
               Your browser does not support the video tag.
             </video>
+            
+            <!-- Error message that shows if video fails to load -->
+            <div v-if="videoError" class="video-error-message">
+              <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+              <p>Unable to play this video. It may be unavailable or in an unsupported format.</p>
+              <p v-if="isOwner" class="mt-2">
+                <router-link :to="`/edit-reel/${reel.id}`" class="btn btn-sm btn-primary">
+                  <i class="fas fa-edit me-1"></i> Edit this reel
+                </router-link>
+              </p>
+            </div>
           </div>
           
           <!-- Reel information -->
@@ -26,7 +43,7 @@
             
             <div class="d-flex align-items-center my-3">
               <router-link :to="`/profile/${reel.owner.username}`" class="d-flex align-items-center text-decoration-none">
-                <span class="avatar">{{ reel.owner.username.charAt(0).toUpperCase() }}</span>
+                <span class="avatar">{{ getUserInitial(reel.owner.username) }}</span>
                 <span class="ms-2 fw-bold">{{ reel.owner.username }}</span>
               </router-link>
               
@@ -74,6 +91,15 @@
             <div class="reel-description">
               <p>{{ reel.description }}</p>
             </div>
+            
+            <!-- Video details (only for the owner) -->
+            <div v-if="isOwner" class="video-details mt-3 p-3 bg-light rounded">
+              <h6><i class="fas fa-info-circle me-2"></i> Video Details</h6>
+              
+              <div v-if="reel.video_url" class="small text-muted mt-2">
+                <div><strong>URL:</strong> {{ reel.video_url }}</div>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -96,7 +122,7 @@
               <div v-for="comment in comments" :key="comment.id" class="comment-item">
                 <div class="d-flex">
                   <div class="comment-avatar">
-                    {{ comment.user.username.charAt(0).toUpperCase() }}
+                    {{ getUserInitial(comment.user.username) }}
                   </div>
                   <div class="comment-content ms-2">
                     <div class="comment-header">
@@ -165,7 +191,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
 import { Modal } from 'bootstrap';
@@ -185,6 +211,7 @@ export default {
     const loading = ref(true);
     const commentsLoading = ref(false);
     const commentText = ref('');
+    const videoError = ref(false);
     
     const reel = computed(() => store.getters['reels/getCurrentReel']);
     const comments = computed(() => store.getters['reels/getReelComments'](Number(route.params.id)));
@@ -200,6 +227,7 @@ export default {
     
     const loadReelData = async () => {
       loading.value = true;
+      videoError.value = false;
       
       try {
         await store.dispatch('reels/fetchReelById', reelId.value);
@@ -275,15 +303,57 @@ export default {
     };
     
     const formatDate = (dateString) => {
-      const date = new Date(dateString);
-      return new Intl.DateTimeFormat('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(date);
+      if (!dateString) return 'Unknown date';
+      
+      try {
+        const date = new Date(dateString);
+        return new Intl.DateTimeFormat('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }).format(date);
+      } catch (e) {
+        console.error('Error formatting date:', e);
+        return 'Invalid date';
+      }
     };
+    
+    const getUserInitial = (username) => {
+      return username ? username.charAt(0).toUpperCase() : '?';
+    };
+    
+    const getVideoType = (url) => {
+      if (!url) return 'video/mp4';
+      
+      const extension = url.split('.').pop().toLowerCase();
+      switch (extension) {
+        case 'mp4':
+          return 'video/mp4';
+        case 'webm':
+          return 'video/webm';
+        case 'mov':
+          return 'video/quicktime';
+        case 'ogg':
+          return 'video/ogg';
+        default:
+          return 'video/mp4';
+      }
+    };
+    
+    const handleVideoError = (event) => {
+      console.error('Video error:', event);
+      videoError.value = true;
+    };
+    
+    // Watch for route changes
+    watch(() => route.params.id, (newId) => {
+      if (newId && Number(newId) !== reelId.value) {
+        videoError.value = false;
+        loadReelData();
+      }
+    });
     
     onMounted(() => {
       loadReelData();
@@ -305,13 +375,17 @@ export default {
       commentInput,
       isAuthenticated,
       isOwner,
+      videoError,
       loadReelData,
       handleLike,
       submitComment,
       focusCommentInput,
       confirmDelete,
       deleteReel,
-      formatDate
+      formatDate,
+      getUserInitial,
+      getVideoType,
+      handleVideoError
     };
   }
 };
@@ -323,6 +397,7 @@ export default {
 }
 
 .video-player-container {
+  position: relative;
   width: 100%;
   border-radius: 8px;
   overflow: hidden;
@@ -333,6 +408,22 @@ export default {
   width: 100%;
   max-height: 70vh;
   object-fit: contain;
+}
+
+.video-error-message {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  text-align: center;
+  padding: 2rem;
 }
 
 .avatar {

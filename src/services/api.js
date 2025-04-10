@@ -1,12 +1,14 @@
 import axios from 'axios';
-import router from '@/router'; // Import your router
+import router from '@/router';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000' ,
-  timeout: 10000,
+  baseURL: process.env.NODE_ENV === 'production' 
+    ? process.env.VUE_APP_API_BASE_URL 
+    : 'http://localhost:8000',
+  timeout: 30000, // Extended default timeout
   headers: {
-    'Content-Type': 'application/json',
     'Accept': 'application/json'
+    // Remove default Content-Type to allow browser to set it with boundary for FormData
   }
 });
 
@@ -16,6 +18,20 @@ api.interceptors.request.use(config => {
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;
   }
+  
+  // Don't override Content-Type for FormData requests
+  if (!config.headers['Content-Type'] && 
+      !(config.data instanceof FormData)) {
+    config.headers['Content-Type'] = 'application/json';
+  }
+  
+  console.log('API Request:', {
+    url: config.url,
+    method: config.method,
+    headers: config.headers,
+    data: config.data instanceof FormData ? 'FormData' : config.data
+  });
+  
   return config;
 }, error => {
   return Promise.reject(error);
@@ -23,25 +39,36 @@ api.interceptors.request.use(config => {
 
 // Response interceptor
 api.interceptors.response.use(
-  response => response,
+  response => {
+    console.log('API Response Success:', {
+      url: response.config.url,
+      status: response.status,
+      data: response.data
+    });
+    return response;
+  },
   error => {
-    console.error('API Interceptor Error:', {
+    console.error('API Error:', {
       message: error.message,
       code: error.code,
-      response: error.response,
-      request: error.request
+      response: error.response ? {
+        status: error.response.status,
+        data: error.response.data
+      } : 'No response',
+      config: error.config ? {
+        url: error.config.url,
+        method: error.config.method,
+        headers: error.config.headers
+      } : 'No config'
     });
 
     // Handle specific error scenarios
     if (error.code === 'ERR_NETWORK') {
-      // Network error handling
       console.error('Network Error: Unable to connect to the server');
       // Optional: show a toast or notification
     }
 
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       switch (error.response.status) {
         case 401:
           // Unauthorized - redirect to login or logout
@@ -49,7 +76,6 @@ api.interceptors.response.use(
           router.push('/login');
           break;
         case 403:
-          // Forbidden
           console.error('Access Forbidden');
           break;
         case 404:

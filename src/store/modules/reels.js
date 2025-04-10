@@ -1,5 +1,4 @@
-
-
+// src/store/modules/reels.js
 import reelsService from '@/services/reels';
 
 const state = {
@@ -19,12 +18,16 @@ const getters = {
 const actions = {
   async fetchReels({ commit }, { limit = 10, skip = 0, userId = null }) {
     commit('set_loading', true);
+    commit('set_error', null);
+    
     try {
       const response = await reelsService.getReels(limit, skip, userId);
+      console.log('Reels fetched successfully:', response.data);
       commit('set_reels', response.data);
       return response.data;
     } catch (error) {
-      commit('set_error', error.message);
+      console.error('Error fetching reels:', error);
+      commit('set_error', error.message || 'Failed to fetch reels');
       return [];
     } finally {
       commit('set_loading', false);
@@ -33,12 +36,16 @@ const actions = {
   
   async fetchReelById({ commit }, id) {
     commit('set_loading', true);
+    commit('set_error', null);
+    
     try {
       const response = await reelsService.getReelById(id);
+      console.log('Reel fetched successfully:', response.data);
       commit('set_current_reel', response.data);
       return response.data;
     } catch (error) {
-      commit('set_error', error.message);
+      console.error('Error fetching reel by ID:', error);
+      commit('set_error', error.message || 'Failed to fetch reel');
       return null;
     } finally {
       commit('set_loading', false);
@@ -47,22 +54,35 @@ const actions = {
   
   async createReel({ commit }, reelData) {
     commit('set_loading', true);
+    commit('set_error', null);
+    
     try {
-      const response = await reelsService.createReel(reelData);
+      let config = {};
+      if (reelData.config) {
+        config = reelData.config;
+        delete reelData.config;
+      }
+      
+      const response = await reelsService.createReel(reelData, config);
+      console.log('Reel created successfully:', response.data);
       commit('add_reel', response.data);
       return response.data;
     } catch (error) {
-      commit('set_error', error.message);
+      console.error('Error creating reel:', error);
+      commit('set_error', error.message || 'Failed to create reel');
       return null;
     } finally {
       commit('set_loading', false);
     }
   },
   
-  async updateReel({ commit }, { id, reelData }) {
+  async updateReel({ commit }, { id, reelData, config = {} }) {
     commit('set_loading', true);
+    commit('set_error', null);
+    
     try {
-      const response = await reelsService.updateReel(id, reelData);
+      const response = await reelsService.updateReel(id, reelData, config);
+      console.log('Reel updated successfully:', response.data);
       commit('update_reel', response.data);
       
       if (state.currentReel && state.currentReel.id === id) {
@@ -71,7 +91,8 @@ const actions = {
       
       return response.data;
     } catch (error) {
-      commit('set_error', error.message);
+      console.error('Error updating reel:', error);
+      commit('set_error', error.message || 'Failed to update reel');
       return null;
     } finally {
       commit('set_loading', false);
@@ -80,12 +101,16 @@ const actions = {
   
   async deleteReel({ commit }, id) {
     commit('set_loading', true);
+    commit('set_error', null);
+    
     try {
       await reelsService.deleteReel(id);
+      console.log('Reel deleted successfully:', id);
       commit('remove_reel', id);
       return true;
     } catch (error) {
-      commit('set_error', error.message);
+      console.error('Error deleting reel:', error);
+      commit('set_error', error.message || 'Failed to delete reel');
       return false;
     } finally {
       commit('set_loading', false);
@@ -93,34 +118,43 @@ const actions = {
   },
   
   async likeReel({ commit }, reelId) {
+    commit('set_error', null);
+    
     try {
       await reelsService.likeReel(reelId);
       commit('toggle_reel_like', reelId);
       return true;
     } catch (error) {
-      commit('set_error', error.message);
+      console.error('Error liking reel:', error);
+      commit('set_error', error.message || 'Failed to like reel');
       return false;
     }
   },
   
   async fetchReelComments({ commit }, reelId) {
+    commit('set_error', null);
+    
     try {
       const response = await reelsService.getReelComments(reelId);
       commit('set_reel_comments', { reelId, comments: response.data });
       return response.data;
     } catch (error) {
-      commit('set_error', error.message);
+      console.error('Error fetching reel comments:', error);
+      commit('set_error', error.message || 'Failed to fetch comments');
       return [];
     }
   },
   
   async commentOnReel({ commit, dispatch }, { reelId, content }) {
+    commit('set_error', null);
+    
     try {
       await reelsService.commentOnReel(reelId, content);
       await dispatch('fetchReelComments', reelId);
       return true;
     } catch (error) {
-      commit('set_error', error.message);
+      console.error('Error commenting on reel:', error);
+      commit('set_error', error.message || 'Failed to post comment');
       return false;
     }
   }

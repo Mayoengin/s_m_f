@@ -1,20 +1,20 @@
-
-// src/main.js (updated)
+// src/main.js
 import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
 import store from './store';
 
-// Import Bootstrap CSS and JS
+// Import Bootstrap CSS and JS properly
 import 'bootstrap/dist/css/bootstrap.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
 // Import Font Awesome
 import '@fortawesome/fontawesome-free/css/all.css';
 
-// Create and mount the Vue app
+// Create Vue app
 const app = createApp(App);
 
+// Use plugins
 app.use(store);
 app.use(router);
 

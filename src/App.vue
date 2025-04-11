@@ -1,4 +1,3 @@
-// src/App.vue
 <template>
   <div id="app">
     <Navbar v-if="isAuthenticated" />
@@ -23,16 +22,37 @@ export default {
   },
   setup() {
     const store = useStore();
-    
+   
     const isAuthenticated = computed(() => store.getters['auth/isAuthenticated']);
-    
+   
     onMounted(async () => {
-      // If user is logged in, fetch their profile
+      // Fix any existing duplicated profile picture paths
+      store.dispatch('users/fixProfilePicturePaths');
+      
+      // If user is logged in but no user object, fetch profile
       if (isAuthenticated.value) {
-        await store.dispatch('auth/fetchCurrentUser');
+        const userData = await store.dispatch('auth/fetchCurrentUser');
+        
+        // If user data contains a duplicated profile picture path, fix it
+        if (userData && userData.profile_picture && 
+            userData.profile_picture.includes('/static/profile_pictures/static/profile_pictures/')) {
+          
+          // Create updated user with fixed path
+          const updatedUser = {
+            ...userData,
+            profile_picture: userData.profile_picture.replace(
+              '/static/profile_pictures/static/profile_pictures/', 
+              '/static/profile_pictures/'
+            )
+          };
+          
+          // Update user in store and localStorage
+          store.commit('auth/set_user', updatedUser);
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
       }
     });
-    
+   
     return {
       isAuthenticated
     };
@@ -41,7 +61,6 @@ export default {
 </script>
 
 <style>
-/* You can add global styles here */
 #app {
   min-height: 100vh;
   display: flex;
@@ -52,17 +71,3 @@ main {
   flex: 1;
 }
 </style>
-
-// src/main.js
-import { createApp } from 'vue';
-import App from './App.vue';
-import router from './router';
-import store from './store';
-import 'bootstrap/dist/css/bootstrap.css';
-import 'bootstrap-vue-next/dist/bootstrap-vue-next.css';
-import '@fortawesome/fontawesome-free/css/all.css';
-
-createApp(App)
-  .use(store)
-  .use(router)
-  .mount('#app');

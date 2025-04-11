@@ -16,9 +16,14 @@
       <div class="card-body">
         <!-- Post header -->
         <div class="d-flex align-items-center mb-3">
-          <div class="bg-secondary text-white rounded-circle me-3 user-avatar">
-            {{ ownerInitial }}
-          </div>
+          <!-- Use profile picture when available -->
+          <UserAvatar 
+            :username="post.owner.username"
+            :profilePicture="post.owner.profile_picture" 
+            size="md" 
+            class="me-3" 
+            backgroundColor="bg-secondary"
+          />
           <div>
             <router-link :to="`/profile/${post.owner.username}`" class="text-decoration-none">
               <h5 class="mb-0">{{ post.owner.username }}</h5>
@@ -87,9 +92,14 @@
         <!-- New comment form -->
         <div class="mb-4">
           <div class="d-flex">
-            <div class="bg-primary text-white rounded-circle me-2 comment-avatar">
-              {{ currentUserInitial }}
-            </div>
+            <!-- Use profile picture when available -->
+            <UserAvatar 
+              :username="currentUser.username"
+              :profilePicture="currentUser.profile_picture" 
+              size="sm" 
+              class="me-2" 
+              backgroundColor="bg-primary"
+            />
             <div class="flex-grow-1">
               <textarea 
                 v-model="newComment" 
@@ -126,9 +136,14 @@
         <div v-else>
           <div v-for="comment in comments" :key="comment.id" class="comment mb-3">
             <div class="d-flex">
-              <div class="bg-secondary text-white rounded-circle me-2 comment-avatar">
-                {{ getInitial(comment.user.username) }}
-              </div>
+              <!-- Use profile picture when available -->
+              <UserAvatar 
+                :username="comment.user.username"
+                :profilePicture="comment.user.profile_picture" 
+                size="sm" 
+                class="me-2" 
+                backgroundColor="bg-secondary"
+              />
               <div class="flex-grow-1">
                 <div class="comment-bubble p-3">
                   <div class="d-flex justify-content-between mb-1">
@@ -152,9 +167,13 @@
 import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
+import UserAvatar from '@/components/common/UserAvatar.vue';
 
 export default {
   name: 'PostDetail',
+  components: {
+    UserAvatar
+  },
   setup() {
     const store = useStore();
     const route = useRoute();
@@ -167,12 +186,10 @@ export default {
     const newComment = ref('');
     
     const currentUser = computed(() => store.getters['auth/currentUser'] || {});
-    const currentUserInitial = computed(() => currentUser.value.username?.charAt(0).toUpperCase() || '');
     const post = computed(() => store.getters['posts/getCurrentPost']);
     const comments = computed(() => store.getters['comments/getCommentsByPostId'](postId) || []);
     
     const isOwner = computed(() => currentUser.value.id === post.value?.owner_id);
-    const ownerInitial = computed(() => post.value?.owner?.username?.charAt(0).toUpperCase() || '');
     
     const formattedDate = computed(() => {
       if (!post.value?.created_at) return '';
@@ -186,10 +203,6 @@ export default {
         minute: '2-digit'
       });
     });
-    
-    const getInitial = (username) => {
-      return username?.charAt(0).toUpperCase() || '';
-    };
     
     const formatDate = (dateString) => {
       const date = new Date(dateString);
@@ -260,11 +273,8 @@ export default {
       comments,
       newComment,
       currentUser,
-      currentUserInitial,
       isOwner,
-      ownerInitial,
       formattedDate,
-      getInitial,
       formatDate,
       vote,
       addComment,
@@ -274,26 +284,9 @@ export default {
 };
 </script>
 
+
+
 <style scoped>
-.user-avatar {
-  width: 48px;
-  height: 48px;
-  font-size: 18px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.comment-avatar {
-  width: 36px;
-  height: 36px;
-  font-size: 14px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-shrink: 0;
-}
-
 .comment-bubble {
   background-color: #f8f9fa;
   border-radius: 0.5rem;

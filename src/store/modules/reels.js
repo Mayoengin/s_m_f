@@ -121,8 +121,15 @@ const actions = {
     commit('set_error', null);
     
     try {
-      await reelsService.likeReel(reelId);
-      commit('toggle_reel_like', reelId);
+      const response = await reelsService.likeReel(reelId);
+      
+      // Update the reel with the new vote count and like status
+      commit('toggle_reel_like', {
+        reelId, 
+        votes: response.data.votes,
+        isLiked: response.data.is_liked
+      });
+      
       return true;
     } catch (error) {
       console.error('Error liking reel:', error);
@@ -195,17 +202,16 @@ const mutations = {
     }
   },
   
-  toggle_reel_like(state, reelId) {
+  toggle_reel_like(state, { reelId, votes, isLiked }) {
     const reel = state.reels.find(reel => reel.id === reelId);
     if (reel) {
-      reel.likes = reel.is_liked ? reel.likes - 1 : reel.likes + 1;
-      reel.is_liked = !reel.is_liked;
+      reel.votes = votes;
+      reel.is_liked = isLiked;
     }
     
     if (state.currentReel && state.currentReel.id === reelId) {
-      state.currentReel.likes = state.currentReel.is_liked ? 
-        state.currentReel.likes - 1 : state.currentReel.likes + 1;
-      state.currentReel.is_liked = !state.currentReel.is_liked;
+      state.currentReel.votes = votes;
+      state.currentReel.is_liked = isLiked;
     }
   },
   

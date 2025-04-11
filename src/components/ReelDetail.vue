@@ -79,12 +79,12 @@
                 @click="handleLike"
               >
                 <i class="fas fa-heart"></i>
-                <span class="ms-1">{{ reel.likes || 0 }}</span>
+                <span class="ms-1">{{ reel.likes  }}</span>
               </button>
               
               <button class="btn btn-comment" @click="focusCommentInput">
                 <i class="fas fa-comment"></i>
-                <span class="ms-1">{{ comments.length || 0 }}</span>
+                <span class="ms-1">{{ comments.length }}</span>
               </button>
             </div>
             

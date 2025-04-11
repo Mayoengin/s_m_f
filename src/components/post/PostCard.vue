@@ -1,12 +1,18 @@
 // src/components/post/PostCard.vue
+// src/components/post/PostCard.vue
 <template>
   <div class="card mb-4">
     <div class="card-body">
       <!-- Post header -->
       <div class="d-flex mb-3">
-        <div class="bg-secondary text-white rounded-circle me-2 user-avatar">
-          {{ ownerInitial }}
-        </div>
+        <!-- Use UserAvatar component instead of div -->
+        <UserAvatar 
+          :username="post.owner.username"
+          :profilePicture="post.owner.profile_picture" 
+          size="sm" 
+          class="me-2" 
+          backgroundColor="bg-secondary"
+        />
         <div>
           <router-link :to="`/profile/${post.owner.username}`" class="text-decoration-none">
             <h6 class="mb-0">{{ post.owner.username }}</h6>
@@ -14,24 +20,7 @@
           <small class="text-muted">{{ formattedDate }}</small>
         </div>
         
-        <!-- Post actions dropdown for post owner -->
-        <div v-if="isOwner" class="dropdown ms-auto">
-          <button class="btn btn-sm" type="button" data-bs-toggle="dropdown">
-            <i class="fas fa-ellipsis-v"></i>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li>
-              <router-link :to="`/edit-post/${post.id}`" class="dropdown-item">
-                <i class="fas fa-edit me-2"></i> Edit
-              </router-link>
-            </li>
-            <li>
-              <a href="#" class="dropdown-item text-danger" @click.prevent="confirmDelete">
-                <i class="fas fa-trash-alt me-2"></i> Delete
-              </a>
-            </li>
-          </ul>
-        </div>
+
       </div>
       
       <!-- Post content -->
@@ -67,10 +56,13 @@
 <script>
 import { computed, ref } from 'vue';
 import { useStore } from 'vuex';
-// Removed unused import: import { useRouter } from 'vue-router';
+import UserAvatar from '@/components/common/UserAvatar.vue';
 
 export default {
   name: 'PostCard',
+  components: {
+    UserAvatar
+  },
   props: {
     post: {
       type: Object,
@@ -80,16 +72,11 @@ export default {
   emits: ['vote'],
   setup(props, { emit }) {
     const store = useStore();
-    // Removed unused router declaration
     const MAX_CONTENT_LENGTH = 200;
     const commentsCount = ref(0);
     
     const currentUser = computed(() => store.getters['auth/currentUser'] || {});
     const isOwner = computed(() => currentUser.value.id === props.post.owner_id);
-    
-    const ownerInitial = computed(() => {
-      return props.post.owner?.username?.charAt(0).toUpperCase() || '';
-    });
     
     const truncatedContent = computed(() => {
       if (props.post.content.length <= MAX_CONTENT_LENGTH) {
@@ -140,7 +127,6 @@ export default {
     return {
       currentUser,
       isOwner,
-      ownerInitial,
       truncatedContent,
       isContentTruncated,
       formattedDate,
@@ -152,6 +138,9 @@ export default {
 };
 </script>
 
+<style scoped>
+/* Remove the .user-avatar styles since we're using the UserAvatar component now */
+</style>
 <style scoped>
 .user-avatar {
   width: 40px;

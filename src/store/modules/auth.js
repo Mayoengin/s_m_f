@@ -15,7 +15,7 @@ const getters = {
 };
 
 const actions = {
-  async login({ commit }, { username, password }) {
+  async login({ commit, dispatch }, { username, password }) {
     commit('auth_request');
     try {
       console.log('Login action started with username:', username);
@@ -34,10 +34,10 @@ const actions = {
       localStorage.setItem('token', accessToken);
       commit('auth_success', accessToken);
       
-      // Get user profile after successful login
+      // Fetch user profile after successful login
       try {
-        await commit('fetchCurrentUser');
-        return true;
+        const userProfile = await dispatch('fetchCurrentUser');
+        return !!userProfile;
       } catch (profileError) {
         console.error('Error fetching user profile:', profileError);
         // Still return true because login was successful
@@ -47,22 +47,6 @@ const actions = {
       console.error('Login error:', error.response ? error.response.data : error);
       commit('auth_error');
       localStorage.removeItem('token');
-      return false;
-    }
-  },
-  
-  async register({ commit, dispatch }, userData) {
-    commit('auth_request');
-    try {
-      await authService.register(userData);
-      
-      // After registration, log user in
-      return dispatch('login', {
-        username: userData.username,
-        password: userData.password
-      });
-    } catch (error) {
-      commit('auth_error');
       return false;
     }
   },
@@ -79,6 +63,22 @@ const actions = {
       console.error('Failed to fetch user profile:', error);
       commit('auth_error');
       return null;
+    }
+  },
+  
+  async register({ commit, dispatch }, userData) {
+    commit('auth_request');
+    try {
+      await authService.register(userData);
+      
+      // After registration, log user in
+      return dispatch('login', {
+        username: userData.username,
+        password: userData.password
+      });
+    } catch (error) {
+      commit('auth_error');
+      return false;
     }
   },
   

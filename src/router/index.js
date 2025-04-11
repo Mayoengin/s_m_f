@@ -14,13 +14,20 @@ import Reels from '../views/Reels.vue';
 import ReelDetailView from '../views/ReelDetailView.vue';
 import CreateReelView from '../views/CreateReelView.vue';
 import EditReelView from '../views/EditReelView.vue';
-
+import EditProfile from '../views/EditProfile.vue';
+import SearchView from '../views/SearchView.vue';
 // Define routes with base path adjusted
 const routes = [
   {
     path: '/',
     name: 'Home',
     component: Home,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/search',
+    name: 'Search',
+    component: SearchView,
     meta: { requiresAuth: true }
   },
   {
@@ -39,6 +46,12 @@ const routes = [
     path: '/profile/:username',
     name: 'Profile',
     component: Profile,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/edit-profile',
+    name: 'EditProfile',
+    component: EditProfile,
     meta: { requiresAuth: true }
   },
   {

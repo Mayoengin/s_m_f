@@ -22,25 +22,35 @@
         <div class="card reel-card h-100">
           <!-- Video thumbnail or preview -->
           <div class="reel-preview" @click="viewReel(reel.id)">
-            <!-- Use poster attribute for thumbnail and preload="metadata" -->
+            <!-- Fallback for failed videos -->
+            <div v-if="videoLoadErrors[reel.id]" class="video-error-container">
+              <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+              <p>Unable to load video</p>
+              <small class="text-muted mt-2" v-if="reel.video_url">
+                URL: {{ reel.video_url }}
+              </small>
+            </div>
+            
+            <!-- Only show video if no error -->
             <video 
+              v-else
               class="card-img-top" 
-              :src="reel.video_url" 
+              :src="getVideoUrl(reel.video_url)" 
               preload="metadata"
               muted
-              ref="videoElement"
               @error="handleVideoError($event, reel)"
             ></video>
+            
             <div class="overlay">
               <i class="fas fa-play-circle fa-3x"></i>
             </div>
           </div>
           
           <div class="card-body">
-            <h5 class="card-title">{{ reel.title }}</h5>
+            <h5 class="card-title">{{ reel.title || 'Untitled Reel' }}</h5>
             <p class="card-text small text-muted">
-              By <router-link :to="`/profile/${reel.owner.username}`">
-                {{ reel.owner.username }}
+              By <router-link :to="`/profile/${reel?.owner?.username || 'unknown'}`">
+                {{ reel?.owner?.username || 'Unknown user' }}
               </router-link>
               · {{ formatDate(reel.created_at) }}
             </p>
@@ -82,7 +92,7 @@
     </div>
     
     <!-- Confirmation Modal -->
-    <div class="modal fade" id="deleteReelModal" tabindex="-1" aria-hidden="true" ref="deleteModal">
+    <div class="modal fade" id="deleteReelModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
@@ -126,9 +136,9 @@ export default {
     const reachedEnd = ref(false);
     const deleteModal = ref(null);
     const reelToDelete = ref(null);
-    const videoElement = ref([]);
+    const videoLoadErrors = ref({});
     
-    const reels = computed(() => store.getters['reels/allReels']);
+    const reels = computed(() => store.getters['reels/allReels'] || []);
     const currentUser = computed(() => store.getters['auth/currentUser']);
     
     const fetchReels = async (loadMore = false) => {
@@ -138,6 +148,8 @@ export default {
       if (!loadMore) {
         skip.value = 0;
         reachedEnd.value = false;
+        // Reset video load errors on fresh fetch
+        videoLoadErrors.value = {};
       }
       
       try {
@@ -149,9 +161,9 @@ export default {
           userId: props.userId
         });
         
-        console.log(`Fetched ${response.length} reels`);
+        console.log(`Fetched ${response?.length || 0} reels`);
         
-        if (response.length < limit.value) {
+        if (response?.length < limit.value) {
           reachedEnd.value = true;
         }
         
@@ -165,20 +177,56 @@ export default {
       }
     };
     
+    // Function to handle video URLs and fix CORS issues
+    const getVideoUrl = (url) => {
+      if (!url) return '';
+      
+      // If it's already a relative URL, use it as is
+      if (url.startsWith('/')) return url;
+      
+      // Handle full URLs
+      try {
+        // If it contains localhost:8000, extract just the path
+        if (url.includes('localhost:8000')) {
+          const urlObj = new URL(url);
+          console.log('Converting URL to path:', url, '→', urlObj.pathname);
+          return urlObj.pathname; // This will return just the path part like /uploads/reels/video.mp4
+        }
+        
+        // For other URLs, return as is
+        return url;
+      } catch (e) {
+        console.error('Invalid URL:', url, e);
+        return url;
+      }
+    };
+    
     const loadMore = () => {
       fetchReels(true);
     };
     
     const viewReel = (reelId) => {
-      router.push(`/reels/${reelId}`);
+      if (reelId) {
+        router.push(`/reels/${reelId}`);
+      }
     };
     
     const deleteReelConfirm = (reel) => {
+      if (!reel) return;
+      
       reelToDelete.value = reel;
+      
+      // Initialize modal if it doesn't exist
       if (!deleteModal.value) {
-        deleteModal.value = new Modal(document.getElementById('deleteReelModal'));
+        const modalElement = document.getElementById('deleteReelModal');
+        if (modalElement) {
+          deleteModal.value = new Modal(modalElement);
+        }
       }
-      deleteModal.value.show();
+      
+      if (deleteModal.value) {
+        deleteModal.value.show();
+      }
     };
     
     const confirmDelete = async () => {
@@ -220,17 +268,26 @@ export default {
     };
     
     const handleVideoError = (event, reel) => {
-      console.error(`Error loading video for reel ${reel.id}:`, event);
+      if (!reel || !reel.id) return;
+      
+      console.error(`Error loading video for reel ${reel.id}:`, event, 'URL:', reel.video_url);
       // Mark the video element with an error class for styling
       if (event.target) {
         event.target.classList.add('video-error');
-        // Add a fallback background so it's not just empty
-        event.target.style.backgroundColor = '#000';
       }
+      
+      // Track which videos failed to load
+      videoLoadErrors.value[reel.id] = true;
     };
     
     onMounted(() => {
       fetchReels();
+      
+      // Initialize Bootstrap modal
+      const modalElement = document.getElementById('deleteReelModal');
+      if (modalElement) {
+        deleteModal.value = new Modal(modalElement);
+      }
     });
     
     // Watch for changes in userId prop to refetch reels
@@ -245,71 +302,89 @@ export default {
       currentUser,
       deleteModal,
       reelToDelete,
-      videoElement,
+      videoLoadErrors,
       loadMore,
       viewReel,
       deleteReelConfirm,
       confirmDelete,
       formatDate,
       truncateText,
-      handleVideoError
-      };
-    }
-  };
-  </script>
-  
-  <style scoped>
-  .reels-container {
-    padding: 20px 0;
+      handleVideoError,
+      getVideoUrl
+    };
   }
-  
-  .reel-card {
-    transition: transform 0.2s;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  }
-  
-  .reel-card:hover {
-    transform: translateY(-5px);
-  }
-  
-  .reel-preview {
-    position: relative;
-    cursor: pointer;
-    height: 200px;
-    overflow: hidden;
-    background-color: #000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .reel-preview video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  .reel-preview .overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.3);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-  
-  .reel-preview:hover .overlay {
-    opacity: 1;
-  }
-  
-  .overlay i {
-    color: white;
-  }
-  </style>
+};
+</script>
+
+<style scoped>
+.reels-container {
+  padding: 20px 0;
+}
+
+.reel-card {
+  transition: transform 0.2s;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.reel-card:hover {
+  transform: translateY(-5px);
+}
+
+.reel-preview {
+  position: relative;
+  cursor: pointer;
+  height: 200px;
+  overflow: hidden;
+  background-color: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.reel-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-error-container {
+  height: 200px;
+  width: 100%;
+  background-color: #000;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+}
+
+.reel-preview .overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.reel-preview:hover .overlay {
+  opacity: 1;
+}
+
+.overlay i {
+  color: white;
+}
+
+.video-error {
+  background-color: #000;
+}
+</style>

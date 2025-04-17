@@ -3,7 +3,7 @@
 <template>
   <footer class="bg-light text-center py-3 mt-auto">
     <div class="container">
-      <p class="mb-0">© {{ currentYear }} SocialApp. All rights reserved.</p>
+      <p class="mb-0">© {{ currentYear }} Mayo. All rights reserved.</p>
     </div>
   </footer>
 </template>
